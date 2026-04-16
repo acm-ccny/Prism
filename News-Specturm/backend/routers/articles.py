@@ -65,6 +65,25 @@ def fetch_and_store_news(
     return ArticlesResponse(data=articles, total=len(articles))
 
 
+@router.get("/live", response_model=ArticlesResponse)
+def get_live_articles(
+    category: str = Query("general", description="NewsAPI category"),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    """Return fresh articles from NewsAPI without touching the database."""
+    try:
+        raw = news_service.fetch_top_headlines(
+            category=category,
+            page_size=page_size,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NewsAPI error: {str(e)}")
+    articles = [Article(**a) for a in raw]
+    return ArticlesResponse(data=articles, total=len(articles))
+
+
 @router.get("/{article_id}", response_model=Article)
 def get_article(article_id: str):
     """Return a single article by its UUID."""

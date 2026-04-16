@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -12,15 +7,71 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Light mode design tokens ───────────────────────────── */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --d-bg: #f9fafb;
+  --d-surface: #ffffff;
+  --d-header: rgba(255, 255, 255, 0.8);
+  --d-border: #e5e7eb;
+  --d-hover: #f3f4f6;
+  --d-input: #f9fafb;
+  --d-skeleton: #e5e7eb;
+  --d-skeleton-soft: rgba(243, 244, 246, 0.5);
+  --d-text: #111827;
+  --d-text-muted: #9ca3af;
+  --d-text-sub: #6b7280;
+  --d-active-bg: #eff6ff;
+  --d-active-color: #1d4ed8;
+  --d-sidebar-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.04);
+  --d-header-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06);
+  --d-card-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.05);
+  --d-featured-shadow: 0 2px 12px 0 rgba(59, 130, 246, 0.08),
+    0 1px 3px 0 rgba(0, 0, 0, 0.06);
+
+  --d-bias-left-bg: #eff6ff;
+  --d-bias-left-color: #1d4ed8;
+  --d-bias-center-bg: #f0fdf4;
+  --d-bias-center-color: #15803d;
+  --d-bias-right-bg: #fff7ed;
+  --d-bias-right-color: #c2410c;
+}
+
+/* ── Dark mode overrides (toggled by <html class="dark">) ── */
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --d-bg: #0a0a0a;
+  --d-surface: #111111;
+  --d-header: rgba(17, 17, 17, 0.8);
+  --d-border: #222222;
+  --d-hover: #1c1c1c;
+  --d-input: #161616;
+  --d-skeleton: #1e1e1e;
+  --d-skeleton-soft: #1a1a1a;
+  --d-text: #e5e5e5;
+  --d-text-muted: #555555;
+  --d-text-sub: #333333;
+  --d-active-bg: #1a1a3a;
+  --d-active-color: #60a5fa;
+  --d-sidebar-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.4);
+  --d-header-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.4);
+  --d-card-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.5);
+  --d-featured-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.6);
+
+  --d-bias-left-bg: rgba(30, 58, 95, 0.5);
+  --d-bias-left-color: #60a5fa;
+  --d-bias-center-bg: rgba(20, 83, 45, 0.5);
+  --d-bias-center-color: #4ade80;
+  --d-bias-right-bg: rgba(124, 45, 18, 0.5);
+  --d-bias-right-color: #fb923c;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--d-bg);
+  color: var(--d-text);
   font-family: Arial, Helvetica, sans-serif;
 }
