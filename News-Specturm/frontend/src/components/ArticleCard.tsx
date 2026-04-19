@@ -1,5 +1,6 @@
 "use client";
 import type { Article } from "../lib/types";
+import BiasTag from "./BiasTag"
 
 interface Props {
   article: Article;
@@ -58,9 +59,16 @@ export default function ArticleCard({ article, onClick }: Props) {
       <p className="text-xs mt-auto" style={{ color: "var(--d-text-muted)" }}>
         {article.source}
         {formattedDate && (
-          <span style={{ color: "var(--d-border)" }}> · </span>
+          <span style={{ color: "var(--d-border)" }}> | </span>
         )}
         {formattedDate}
+        { article.bias || (
+          <>
+          <span style = {{color: "var(--d-border)"}}> | </span>
+          <BiasTag bias={"right"} />
+          </>
+        
+        )}
       </p>
     </div>
   );
