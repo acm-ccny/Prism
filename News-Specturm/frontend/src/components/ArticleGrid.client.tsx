@@ -3,7 +3,7 @@ import { useState } from "react";
 import ArticleCard from "./ArticleCard";
 import ArticleCanvas from "./ArticleCanvas.client";
 import type { Article } from "../lib/types";
-import BiasTag from "./BiasTag"
+import BiasTag from "./BiasTag";
 
 interface Props {
   articles: Article[];
@@ -86,13 +86,12 @@ export default function ArticleGrid({ articles }: Props) {
               <>
                 <span style={{ color: "var(--d-border)" }}> · </span>
                 {featuredDate}
-              {featured.bias || (
-          <>
-          <span style = {{color: "var(--d-border)"}}> | </span>
-          <BiasTag bias={"right"} />
-          </>
-        
-        )}
+              </>
+            )}
+            {featured.bias && (
+              <>
+                <span style={{ color: "var(--d-border)" }}> | </span>
+                <BiasTag bias={featured.bias} />
               </>
             )}
           </p>
@@ -127,6 +126,7 @@ export default function ArticleGrid({ articles }: Props) {
       {selected && (
         <ArticleCanvas
           article={selected}
+          allArticles={articles}
           onClose={() => setSelected(null)}
         />
       )}

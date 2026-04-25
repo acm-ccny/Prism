@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "../supabasefile";
 
 export default function HeaderClient() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -10,6 +12,11 @@ export default function HeaderClient() {
     const next = !isDark;
     setIsDark(next);
     document.documentElement.classList.toggle("dark", next);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
   };
 
   return (
@@ -111,12 +118,12 @@ export default function HeaderClient() {
         )}
       </button>
 
-      <Link
-        href="/signup"
+      <button
+        onClick={handleLogout}
         className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 shadow-sm shadow-blue-200"
       >
-        Sign Up
-      </Link>
+        Log Out
+      </button>
     </header>
   );
 }

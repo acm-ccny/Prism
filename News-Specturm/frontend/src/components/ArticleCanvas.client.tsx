@@ -3,14 +3,18 @@ import { useEffect, useState } from "react";
 import type { Article } from "../lib/types";
 import BiasSpectrum from "./BiasSpectrum.client";
 import type { SpectrumArticle } from "./BiasSpectrum.client";
+import { buildSpectrumArticles } from "../lib/spectrum";
+import { getRelatedArticles } from "../lib/api";
 
 interface Props {
   article: Article;
+  allArticles: Article[];
   onClose: () => void;
 }
 
-export default function ArticleCanvas({ article, onClose }: Props) {
+export default function ArticleCanvas({ article, allArticles, onClose }: Props) {
   const [visible, setVisible] = useState(false);
+  const [remoteSpectrum, setRemoteSpectrum] = useState<SpectrumArticle[]>([]);
 
   // Animate in on mount
   useEffect(() => {
@@ -43,13 +47,51 @@ export default function ArticleCanvas({ article, onClose }: Props) {
       })
     : null;
 
-  // Strip NewsAPI's trailing "[+N chars]" truncation marker
+  // Strip trailing truncation marker from provider previews
   const content = article.content
     ? article.content.replace(/\s*\[\+\d+ chars\]$/, "").trim()
     : null;
 
-  // Placeholder — will be populated by the bias model in a future sprint
-  const spectrumArticles: SpectrumArticle[] = [];
+  useEffect(() => {
+    let active = true;
+
+    const loadRelated = async () => {
+      try {
+        const response = await getRelatedArticles({
+          query: article.title,
+          category: article.category,
+          excludeUrl: article.url,
+          pageSize: 24,
+          maxAgeHours: 120,
+        });
+
+        if (!active) return;
+        const mapped: SpectrumArticle[] = response.data
+          .filter((a) => a.bias === "left" || a.bias === "center" || a.bias === "right")
+          .map((a) => ({
+            title: a.title,
+            source: a.source,
+            url: a.url,
+            bias: a.bias as "left" | "center" | "right",
+            image_url: a.image_url,
+            published_at: a.published_at,
+          }));
+
+        setRemoteSpectrum(mapped);
+      } catch {
+        if (active) setRemoteSpectrum([]);
+      }
+    };
+
+    void loadRelated();
+    return () => {
+      active = false;
+    };
+  }, [article.title, article.category, article.url]);
+
+  const localFallback = buildSpectrumArticles(article, allArticles);
+  const spectrumArticlesForView: SpectrumArticle[] =
+    remoteSpectrum.length > 0 ? remoteSpectrum : localFallback;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -205,7 +247,7 @@ export default function ArticleCanvas({ article, onClose }: Props) {
                 </p>
               )}
 
-              {/* Body content (truncated by NewsAPI) */}
+              {/* Body content (often provider-truncated) */}
               {content && content !== article.summary && (
                 <>
                   <p
@@ -263,7 +305,9 @@ export default function ArticleCanvas({ article, onClose }: Props) {
         <div className="w-72 shrink-0 h-full">
           <BiasSpectrum
             topic={article.title}
-            articles={spectrumArticles}
+            articles={spectrumArticlesForView}
+            selectedBias={article.bias}
+            selectedSource={article.source}
           />
         </div>
       </div>

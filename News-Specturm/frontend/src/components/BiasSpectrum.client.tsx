@@ -12,6 +12,8 @@ export interface SpectrumArticle {
 interface Props {
   topic: string | null;
   articles: SpectrumArticle[];
+  selectedBias: "left" | "center" | "right" | null;
+  selectedSource: string;
 }
 
 const SIDES = [
@@ -35,7 +37,12 @@ const SIDES = [
   },
 ];
 
-export default function BiasSpectrum({ topic, articles }: Props) {
+export default function BiasSpectrum({
+  topic,
+  articles,
+  selectedBias,
+  selectedSource,
+}: Props) {
   const byBias = {
     left: articles.filter((a) => a.bias === "left"),
     center: articles.filter((a) => a.bias === "center"),
@@ -70,6 +77,19 @@ export default function BiasSpectrum({ topic, articles }: Props) {
         className="shrink-0 px-5 py-4 border-b"
         style={{ borderColor: "var(--d-border)" }}
       >
+        <div className="mb-3">
+          <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--d-text-sub)" }}>
+            This article
+          </p>
+          <p className="text-xs font-medium" style={{ color: "var(--d-text-muted)" }}>
+            {selectedSource}
+          </p>
+          <p className="text-xs font-semibold mt-1" style={{ color: "var(--d-text)" }}>
+            {selectedBias
+              ? `Falls on: ${selectedBias.charAt(0).toUpperCase()}${selectedBias.slice(1)}`
+              : "Falls on: Unrated"}
+          </p>
+        </div>
         <div
           className="h-1 rounded-full"
           style={{

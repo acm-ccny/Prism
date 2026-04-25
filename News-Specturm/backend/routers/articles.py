@@ -84,6 +84,34 @@ def get_live_articles(
     return ArticlesResponse(data=articles, total=len(articles))
 
 
+@router.get("/related", response_model=ArticlesResponse)
+def get_related_articles(
+    q: str = Query(..., min_length=3, description="Topic/article text to search"),
+    category: str = Query("general", description="Category context"),
+    exclude_url: Optional[str] = Query(None, description="URL to omit from results"),
+    page_size: int = Query(24, ge=1, le=50),
+    max_age_hours: int = Query(120, ge=6, le=336),
+):
+    """Return topic-relevant, multi-source related coverage."""
+    try:
+        raw = news_service.fetch_related_topic(
+            query=q,
+            category=category,
+            page_size=page_size,
+            max_age_hours=max_age_hours,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NewsAPI error: {str(e)}")
+
+    if exclude_url:
+        raw = [a for a in raw if a.get("url") != exclude_url]
+
+    articles = [Article(**a) for a in raw]
+    return ArticlesResponse(data=articles, total=len(articles))
+
+
 @router.get("/{article_id}", response_model=Article)
 def get_article(article_id: str):
     """Return a single article by its UUID."""

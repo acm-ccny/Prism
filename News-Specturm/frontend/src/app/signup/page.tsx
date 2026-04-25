@@ -17,12 +17,21 @@ export default function Signup() {
       email,
       password,
       options: {
-        data: { name },
+        // Keep both keys for compatibility with common Supabase profile triggers.
+        data: { name, full_name: name },
       },
     });
 
     if (error) {
-      setMessage(error.message);
+      console.error("Supabase signUp error:", error);
+      const rawMessage = error.message.toLowerCase();
+      if (rawMessage.includes("email rate limit exceeded")) {
+        setMessage(
+          "Too many signup attempts in a short time. Please wait a few minutes or use a different email."
+        );
+      } else {
+        setMessage(error.message);
+      }
     } else {
       setMessage("Account created! Check your email to confirm.");
     }
@@ -73,7 +82,7 @@ export default function Signup() {
         <p className="mt-6 text-sm text-center text-zinc-500">
           Already have an account?{" "}
           <Link href="/" className="underline hover:text-black dark:hover:text-white">
-            Back to home
+            Log in
           </Link>
         </p>
       </div>

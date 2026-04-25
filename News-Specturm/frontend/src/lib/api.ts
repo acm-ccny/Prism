@@ -33,3 +33,22 @@ export async function getLiveArticles(params: {
   if (!res.ok) throw new Error(`API responded with ${res.status}`);
   return res.json() as Promise<ArticlesResponse>;
 }
+
+export async function getRelatedArticles(params: {
+  query: string;
+  category?: string;
+  excludeUrl?: string;
+  pageSize?: number;
+  maxAgeHours?: number;
+}): Promise<ArticlesResponse> {
+  const url = new URL(`${API_URL}/api/articles/related`);
+  url.searchParams.set("q", params.query);
+  if (params.category) url.searchParams.set("category", params.category);
+  if (params.excludeUrl) url.searchParams.set("exclude_url", params.excludeUrl);
+  if (params.pageSize) url.searchParams.set("page_size", String(params.pageSize));
+  if (params.maxAgeHours) url.searchParams.set("max_age_hours", String(params.maxAgeHours));
+
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  if (!res.ok) throw new Error(`API responded with ${res.status}`);
+  return res.json() as Promise<ArticlesResponse>;
+}

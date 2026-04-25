@@ -1,13 +1,13 @@
 # News Spectrum — Backend
 
-FastAPI backend for the News Spectrum application. Fetches news articles from NewsAPI, stores them in Supabase, and exposes a REST API consumed by the Next.js frontend.
+FastAPI backend for the News Spectrum application. Fetches news articles from Event Registry, stores them in Supabase, and exposes a REST API consumed by the Next.js frontend.
 
 ## Tech Stack
 
 - **Python 3.11+**
 - **FastAPI** — web framework
 - **Supabase** — PostgreSQL database
-- **NewsAPI** — news article source
+- **Event Registry** — news article source
 - **Uvicorn** — ASGI server
 - **Pydantic v2** — data validation
 
@@ -24,7 +24,7 @@ backend/
 │   └── articles.py           # API route handlers
 └── services/
     ├── supabase_service.py   # Supabase client and query helpers
-    └── news_service.py       # NewsAPI fetch helpers
+    └── news_service.py       # Event Registry fetch helpers
 ```
 
 ## Setup
@@ -33,7 +33,7 @@ backend/
 
 - Python 3.11 or newer
 - A [Supabase](https://supabase.com) project
-- A [NewsAPI](https://newsapi.org/register) key (free tier works)
+- An [Event Registry](https://newsapi.ai/documentation?tab=introduction) API key
 
 ### 2. Database
 
@@ -58,7 +58,7 @@ Open `.env` and fill in your keys:
 | `SUPABASE_URL` | Supabase → Settings → API → Project URL |
 | `SUPABASE_ANON_KEY` | Supabase → Settings → API → anon public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role key |
-| `NEWS_API_KEY` | [newsapi.org/register](https://newsapi.org/register) |
+| `EVENT_REGISTRY_API_KEY` | [newsapi.ai/documentation](https://newsapi.ai/documentation?tab=introduction) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
 
 `GEMINI_API_KEY` is reserved for the summarization feature and is not required to run the server now.
@@ -94,7 +94,7 @@ Interactive docs are auto-generated at `http://localhost:8000/docs`.
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/articles` | List articles stored in Supabase |
-| `GET` | `/api/articles/fetch-news` | Fetch from NewsAPI and upsert into Supabase |
+| `GET` | `/api/articles/fetch-news` | Fetch from Event Registry and upsert into Supabase |
 | `GET` | `/api/articles/{id}` | Get a single article by UUID |
 | `POST` | `/api/articles` | Manually create an article |
 
@@ -111,7 +111,7 @@ Interactive docs are auto-generated at `http://localhost:8000/docs`.
 
 | Param | Type | Default | Description |
 |---|---|---|---|
-| `category` | string | `general` | NewsAPI category to pull |
+| `category` | string | `general` | Event Registry category to pull |
 | `country` | string | `us` | Country code |
 | `page_size` | int | `20` | Number of articles to fetch (max `100`) |
 
