@@ -88,12 +88,10 @@ export default function ArticleGrid({ articles }: Props) {
                 {featuredDate}
               </>
             )}
-            {featured.bias && (
-              <>
-                <span style={{ color: "var(--d-border)" }}> | </span>
-                <BiasTag bias={featured.bias} />
-              </>
-            )}
+            <>
+              <span style={{ color: "var(--d-border)" }}> | </span>
+              <BiasTag bias={featured.bias} />
+            </>
           </p>
           <span
             className="text-xs transition-colors group-hover:text-blue-500"
