@@ -204,17 +204,15 @@ export default function ArticleCanvas({ article, allArticles, onClose }: Props) 
                 >
                   {article.category}
                 </span>
-                {article.bias && (
-                  <span
-                    className="text-xs font-semibold rounded-full px-2.5 py-1 capitalize"
-                    style={{
-                      background: `var(--d-bias-${article.bias}-bg)`,
-                      color: `var(--d-bias-${article.bias}-color)`,
-                    }}
-                  >
-                    {article.bias}
-                  </span>
-                )}
+                <span
+                  className="text-xs font-semibold rounded-full px-2.5 py-1 capitalize"
+                  style={{
+                    background: article.bias ? `var(--d-bias-${article.bias}-bg)` : "var(--d-hover)",
+                    color: article.bias ? `var(--d-bias-${article.bias}-color)` : "var(--d-text-muted)",
+                  }}
+                >
+                  {article.bias ?? "Unknown"}
+                </span>
                 {formattedDate && (
                   <span className="text-xs" style={{ color: "var(--d-text-muted)" }}>
                     {formattedDate}

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../supabasefile";
 
@@ -8,10 +8,17 @@ export default function HeaderClient() {
   const [isDark, setIsDark] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    const stored = localStorage.getItem("theme") === "dark";
+    setIsDark(stored);
+    document.documentElement.classList.toggle("dark", stored);
+  }, []);
+
   const toggleDark = () => {
     const next = !isDark;
     setIsDark(next);
     document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   const handleLogout = async () => {
