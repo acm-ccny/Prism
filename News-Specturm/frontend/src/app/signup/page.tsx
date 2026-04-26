@@ -38,9 +38,21 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black text-black dark:text-white">
-      <div className="w-full max-w-sm rounded-lg bg-white dark:bg-zinc-900 p-8 shadow">
-        <h1 className="mb-6 text-2xl font-semibold">Create Account</h1>
+    <div
+      className="flex min-h-screen items-center justify-center"
+      style={{ background: "var(--d-bg)", color: "var(--d-text)" }}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border p-8"
+        style={{
+          background: "var(--d-surface)",
+          borderColor: "var(--d-border)",
+          boxShadow: "var(--d-card-shadow)",
+        }}
+      >
+        <h1 className="mb-6 text-2xl font-semibold" style={{ color: "var(--d-text)" }}>
+          Create Account
+        </h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="text"
@@ -48,7 +60,12 @@ export default function Signup() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+            className="rounded-lg border px-3 py-2 text-sm outline-none transition-all"
+            style={{
+              background: "var(--d-input)",
+              borderColor: "var(--d-border)",
+              color: "var(--d-text)",
+            }}
           />
           <input
             type="email"
@@ -56,7 +73,12 @@ export default function Signup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+            className="rounded-lg border px-3 py-2 text-sm outline-none transition-all"
+            style={{
+              background: "var(--d-input)",
+              borderColor: "var(--d-border)",
+              color: "var(--d-text)",
+            }}
           />
           <input
             type="password"
@@ -65,23 +87,32 @@ export default function Signup() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+            className="rounded-lg border px-3 py-2 text-sm outline-none transition-all"
+            style={{
+              background: "var(--d-input)",
+              borderColor: "var(--d-border)",
+              color: "var(--d-text)",
+            }}
           />
           <button
             type="submit"
-            className="rounded bg-black dark:bg-white px-4 py-2 text-white dark:text-black font-medium transition-colors hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white font-medium transition-colors hover:bg-blue-500 shadow-sm shadow-blue-200"
           >
             Sign Up
           </button>
         </form>
         {message && (
-          <p className="mt-4 text-sm text-center text-zinc-600 dark:text-zinc-400">
+          <p className="mt-4 text-sm text-center" style={{ color: "var(--d-text-muted)" }}>
             {message}
           </p>
         )}
-        <p className="mt-6 text-sm text-center text-zinc-500">
+        <p className="mt-6 text-sm text-center" style={{ color: "var(--d-text-muted)" }}>
           Already have an account?{" "}
-          <Link href="/" className="underline hover:text-black dark:hover:text-white">
+          <Link
+            href="/"
+            className="underline transition-colors"
+            style={{ color: "var(--d-active-color)" }}
+          >
             Log in
           </Link>
         </p>

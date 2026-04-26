@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Name",
-  description: "Empty",
+  title: "News Spectrum",
+  description: "AI-powered bias detection for news articles",
 };
 
 export default function RootLayout({

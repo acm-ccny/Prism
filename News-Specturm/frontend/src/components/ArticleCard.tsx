@@ -62,13 +62,10 @@ export default function ArticleCard({ article, onClick }: Props) {
           <span style={{ color: "var(--d-border)" }}> | </span>
         )}
         {formattedDate}
-        { article.bias && (
-          <>
-          <span style = {{color: "var(--d-border)"}}> | </span>
+        <>
+          <span style={{ color: "var(--d-border)" }}> | </span>
           <BiasTag bias={article.bias} />
-          </>
-        
-        )}
+        </>
       </p>
     </div>
   );
