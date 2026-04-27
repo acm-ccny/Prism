@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL="https://yqtngaioeblciiytcttq.supabase.co/";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_FhwcAh2XsC5M21ca66BTwg_Dmrtb5gw";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
