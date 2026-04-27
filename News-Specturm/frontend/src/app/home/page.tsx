@@ -1,5 +1,5 @@
 import type { Article } from "../../lib/types";
-import { getLiveArticles } from "../../lib/api";
+import { getLiveArticles, getRelatedArticles } from "../../lib/api";
 import ArticleGrid from "../../components/ArticleGrid.client";
 import HeaderClient from "../../components/Header.client";
 import SidebarClient from "../../components/Sidebar.client";
@@ -8,9 +8,9 @@ import RequireAuth from "../../components/RequireAuth.client";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string, search?: string }>;
 }) {
-  const { category: rawCategory } = await searchParams;
+  const { category: rawCategory, search } = await searchParams;
   const requestedCategory = (rawCategory || "home").toLowerCase();
 
   const categoryConfig: Record<string, { heading: string; apiCategory: string }> = {
@@ -29,10 +29,9 @@ export default async function HomePage({
   let error: string | null = null;
 
   try {
-    const response = await getLiveArticles({
-      category: selected.apiCategory,
-      pageSize: 21,
-    });
+    const response = search
+      ? await getRelatedArticles({ query: search })
+      : await getLiveArticles({ category: selected.apiCategory, pageSize: 21 });
     articles = response.data;
   } catch {
     error = "Could not reach the news backend. Make sure it is running on port 8000.";
@@ -59,7 +58,7 @@ export default async function HomePage({
                   className="text-lg font-semibold tracking-tight"
                   style={{ color: "var(--d-text)" }}
                 >
-                  {selected.heading}
+                  {search ? `Results for "${search}"` : selected.heading}
                 </h1>
                 <p className="text-xs mt-0.5" style={{ color: "var(--d-text-muted)" }}>
                   Stay informed. Detect bias.
