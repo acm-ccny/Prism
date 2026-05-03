@@ -141,7 +141,7 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
               color: "var(--ed-text-accent)",
             }}
           >
-            News Spectrum
+            Prism
           </span>
         </Link>
 
