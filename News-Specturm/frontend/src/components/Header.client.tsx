@@ -1,24 +1,29 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../supabasefile";
 
+const subscribeTheme = (cb: () => void) => {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+};
+const getThemeSnapshot = () => localStorage.getItem("theme") === "dark";
+const getThemeServerSnapshot = () => false;
+
 export default function HeaderClient() {
   const router = useRouter();
-  const [isDark, setIsDark] = useState(false);
+  const isDark = useSyncExternalStore(
+    subscribeTheme,
+    getThemeSnapshot,
+    getThemeServerSnapshot,
+  );
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") === "dark";
-    setIsDark(stored);
-    document.documentElement.classList.toggle("dark", stored);
-  }, []);
 
   const toggleDark = () => {
     const next = !isDark;
-    setIsDark(next);
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
+    window.dispatchEvent(new StorageEvent("storage", { key: "theme" }));
   };
 
   const handleLogout = async () => {

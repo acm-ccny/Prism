@@ -124,7 +124,6 @@ export default function ArticleGrid({ articles }: Props) {
       {selected && (
         <ArticleCanvas
           article={selected}
-          allArticles={articles}
           onClose={() => setSelected(null)}
         />
       )}

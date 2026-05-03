@@ -110,7 +110,7 @@ export default function SidebarClient({ activeCategory }: Props) {
               className="text-sm font-semibold tracking-tight"
               style={{ color: "var(--d-text)" }}
             >
-              BiasDetect
+              News Spectrum
             </span>
           </div>
         )}
