@@ -73,6 +73,8 @@ def predict_bias_from_text(text: str) -> tuple[Optional[str], Optional[float]]:
 
 def predict_bias_from_domain(domain: str) -> tuple[Optional[str], Optional[float]]:
     """Domain-based lookup from source_bias.json."""
+    # TEMP: domain JSON path disabled for testing — force model-only path.
+    return None, None
     if not domain:
         return None, None
     candidates = [domain]
