@@ -6,17 +6,20 @@ export interface GetArticlesParams {
   category?: string;
   search?: string;
   limit?: number;
+  offset?: number;
 }
 
 export async function getArticles(
   params: GetArticlesParams = {}
 ): Promise<ArticlesResponse> {
   const url = new URL(`${API_URL}/api/articles`);
-  if (params.category) url.searchParams.set("category", params.category);
+  if (params.category && params.category !== "general")
+    url.searchParams.set("category", params.category);
   if (params.search) url.searchParams.set("search", params.search);
   if (params.limit != null) url.searchParams.set("limit", String(params.limit));
+  if (params.offset != null) url.searchParams.set("offset", String(params.offset));
 
-  const res = await fetch(url.toString(), { next: { revalidate: 60 } });
+  const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) throw new Error(`API responded with ${res.status}`);
   return res.json() as Promise<ArticlesResponse>;
 }

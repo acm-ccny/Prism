@@ -1,5 +1,6 @@
 "use client";
 import type { Article } from "../../lib/types";
+import { formatRelativeShort } from "../../lib/time";
 import ArticleImage from "./ArticleImage";
 import BiasPill from "./BiasPill";
 import SourceMark from "./SourceMark";
@@ -37,13 +38,6 @@ const formatDate = (iso: string | null): string => {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-const estimateMinutes = (a: Article): number => {
-  const text = a.content || a.summary || "";
-  const words = text.split(/\s+/).filter(Boolean).length;
-  if (!words) return 0;
-  return Math.max(1, Math.round(words / 220));
-};
-
 export default function EdCard({
   article,
   size = "md",
@@ -54,8 +48,8 @@ export default function EdCard({
   const cfgColor = `var(--ed-bias-${bias}-color)`;
   const cfgInk = `var(--ed-bias-${bias}-ink)`;
   const sizing = SIZING[size];
-  const minutes = estimateMinutes(article);
   const dateLabel = formatDate(article.published_at);
+  const relLabel = formatRelativeShort(article.published_at);
 
   const handleClick = () => {
     if (onClick) onClick();
@@ -194,7 +188,7 @@ export default function EdCard({
                 <span>{dateLabel}</span>
               </>
             )}
-            {minutes > 0 && (
+            {relLabel && (
               <>
                 <span style={{ opacity: 0.6 }}>·</span>
                 <span
@@ -202,10 +196,10 @@ export default function EdCard({
                     fontFamily:
                       "var(--font-plex), 'IBM Plex Mono', ui-monospace, monospace",
                     fontSize: 11,
-                    letterSpacing: "0.04em",
+                    letterSpacing: "0.08em",
                   }}
                 >
-                  {minutes} MIN
+                  {relLabel}
                 </span>
               </>
             )}
@@ -349,7 +343,7 @@ export default function EdCard({
           }}
         >
           <span>{dateLabel || "—"}</span>
-          {minutes > 0 && <span>{minutes} min</span>}
+          {relLabel && <span>{relLabel}</span>}
         </div>
       </div>
     </article>

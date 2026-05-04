@@ -11,19 +11,21 @@ router = APIRouter()
 def get_articles(
     category: Optional[str] = Query(None, description="Filter by category"),
     sentiment: Optional[str] = Query(None, description="Filter by sentiment"),
-    search: Optional[str] = Query(None, description="Search in article titles"),
+    search: Optional[str] = Query(None, description="Search in article titles and summaries"),
     limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
-    """Return articles stored in Supabase, with optional filters."""
+    """Return articles stored in Supabase, with optional filters and pagination."""
     try:
-        rows = supabase_service.get_articles(
+        rows, total = supabase_service.get_articles(
             category=category,
             sentiment=sentiment,
             search=search,
             limit=limit,
+            offset=offset,
         )
         articles = [Article(**row) for row in rows]
-        return ArticlesResponse(data=articles, total=len(articles))
+        return ArticlesResponse(data=articles, total=total)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

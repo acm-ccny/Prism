@@ -1,8 +1,10 @@
 import type { Article } from "../../lib/types";
-import { getLiveArticles, getRelatedArticles } from "../../lib/api";
+import { getArticles } from "../../lib/api";
 import RequireAuth from "../../components/RequireAuth.client";
 import EditorialNav from "../../components/editorial/EditorialNav.client";
 import EditorialGrid from "../../components/editorial/EditorialGrid.client";
+
+const FIRST_PAGE_SIZE = 21;
 
 export default async function HomePage({
   searchParams,
@@ -28,12 +30,13 @@ export default async function HomePage({
   let error: string | null = null;
 
   try {
-    const response = search
-      ? await getRelatedArticles({ query: search })
-      : await getLiveArticles({
-          category: selected.apiCategory,
-          pageSize: 21,
-        });
+    const response = await getArticles({
+      // For "home", omit category so we pull across all stored articles.
+      category:
+        requestedCategory === "home" ? undefined : selected.apiCategory,
+      search: search || undefined,
+      limit: FIRST_PAGE_SIZE,
+    });
     articles = response.data;
   } catch {
     error = "Could not reach the news backend. Make sure it is running on port 8000.";

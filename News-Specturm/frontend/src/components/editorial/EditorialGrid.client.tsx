@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import type { Article } from "../../lib/types";
+import { formatRelative } from "../../lib/time";
 import EdCard from "./EdCard";
 import SectionHeader from "./SectionHeader";
 import SpectrumBand from "./SpectrumBand";
+import FullFeed from "./FullFeed";
 import ArticleCanvas from "../ArticleCanvas.client";
 
 interface Props {
@@ -43,16 +45,13 @@ export default function EditorialGrid({ articles, heading, searchQuery }: Props)
   const heroSecondary = articles.slice(1, 3);
   const trio = articles.slice(3, 6);
   const longRow = articles.slice(6, 10);
-  const finalGrid = articles.slice(10, 18);
 
-  const updatedAt = articles
-    .map((a) => (a.published_at ? new Date(a.published_at).getTime() : 0))
-    .filter((t) => t > 0)
-    .sort((a, b) => b - a)[0];
+  const latestIso = articles
+    .map((a) => a.published_at)
+    .filter((iso): iso is string => !!iso)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
-  const updatedLabel = updatedAt
-    ? formatRelative(new Date(updatedAt))
-    : "Just now";
+  const updatedLabel = latestIso ? formatRelative(latestIso) : "Just now";
 
   return (
     <>
@@ -195,27 +194,11 @@ export default function EditorialGrid({ articles, heading, searchQuery }: Props)
           </>
         )}
 
-        {finalGrid.length > 0 && (
-          <>
-            <SectionHeader label="The week so far" />
-            <div
-              className="ed-grid-4"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 18,
-              }}
-            >
-              {finalGrid.map((a) => (
-                <EdCard
-                  key={a.id || a.url}
-                  article={a}
-                  size="sm"
-                  onClick={() => setSelected(a)}
-                />
-              ))}
-            </div>
-          </>
+        {articles.length > 0 && (
+          <FullFeed
+            articles={articles}
+            onArticleClick={(a) => setSelected(a)}
+          />
         )}
       </main>
 
@@ -227,15 +210,4 @@ export default function EditorialGrid({ articles, heading, searchQuery }: Props)
       )}
     </>
   );
-}
-
-function formatRelative(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const diffMin = Math.round(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin} min ago`;
-  const diffH = Math.round(diffMin / 60);
-  if (diffH < 24) return `${diffH} hr ago`;
-  const diffD = Math.round(diffH / 24);
-  return `${diffD} day${diffD === 1 ? "" : "s"} ago`;
 }

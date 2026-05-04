@@ -3,7 +3,7 @@
   "_schema": "domain: { bias: 'left' | 'center' | 'right' }",
 
   "nytimes.com":            { "bias": "left" },
-  "washingtonpost.com":     { "bias": "right" },
+  "washingtonpost.com":     { "bias": "left" },
   "cnn.com":                { "bias": "left" },
   "msnbc.com":              { "bias": "left" },
   "nbcnews.com":            { "bias": "left" },

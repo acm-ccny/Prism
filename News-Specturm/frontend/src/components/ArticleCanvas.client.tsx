@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Article } from "../lib/types";
+import { formatRelativeShort } from "../lib/time";
 import BiasSpectrum from "./BiasSpectrum.client";
 import SourceMark from "./editorial/SourceMark";
 
@@ -41,13 +42,6 @@ const formatTime = (iso: string | null): string | null => {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 };
 
-const estimateMinutes = (article: Article): number => {
-  const text = article.content || article.summary || "";
-  const words = text.split(/\s+/).filter(Boolean).length;
-  if (!words) return 0;
-  return Math.max(1, Math.round(words / 220));
-};
-
 export default function ArticleCanvas({ article, onClose }: Props) {
   const [visible, setVisible] = useState(false);
 
@@ -73,7 +67,7 @@ export default function ArticleCanvas({ article, onClose }: Props) {
 
   const dateLabel = formatLongDate(article.published_at);
   const timeLabel = formatTime(article.published_at);
-  const minutes = estimateMinutes(article);
+  const relLabel = formatRelativeShort(article.published_at);
 
   const rawContent = article.content
     ? article.content.replace(/\s*\[\+\d+ chars\]$/, "").trim()
@@ -461,7 +455,7 @@ export default function ArticleCanvas({ article, onClose }: Props) {
                   </span>
                 </div>
                 <span style={{ flex: 1 }} />
-                {minutes > 0 && (
+                {relLabel && (
                   <span
                     style={{
                       ...monoStyle,
@@ -471,7 +465,7 @@ export default function ArticleCanvas({ article, onClose }: Props) {
                       letterSpacing: "0.14em",
                     }}
                   >
-                    {minutes} min read
+                    {relLabel}
                   </span>
                 )}
               </div>
