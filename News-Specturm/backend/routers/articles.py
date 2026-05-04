@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
 from models.article import Article, ArticleCreate, ArticlesResponse
-from services import supabase_service, news_service
+from services import supabase_service, news_service, scraper_service, bias_service
 
 router = APIRouter()
 
@@ -36,10 +36,7 @@ def fetch_and_store_news(
     country: str = Query("us", description="Country code"),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """
-    Fetch fresh articles from NewsAPI, upsert them into Supabase,
-    and return the fetched articles.
-    """
+    """Fetch fresh articles from NewsAPI, upsert them into Supabase, and return them."""
     try:
         raw_articles = news_service.fetch_top_headlines(
             category=category,
@@ -70,7 +67,7 @@ def get_live_articles(
     category: str = Query("general", description="NewsAPI category"),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """Return fresh articles from NewsAPI without touching the database."""
+    """Fetch fresh articles from NewsAPI, store them, and return them."""
     try:
         raw = news_service.fetch_top_headlines(
             category=category,
@@ -80,6 +77,13 @@ def get_live_articles(
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"NewsAPI error: {str(e)}")
+
+    if raw:
+        try:
+            supabase_service.upsert_articles(raw)
+        except Exception:
+            pass  # don't block the response if DB write fails
+
     articles = [Article(**a) for a in raw]
     return ArticlesResponse(data=articles, total=len(articles))
 
@@ -92,7 +96,7 @@ def get_related_articles(
     page_size: int = Query(24, ge=1, le=50),
     max_age_hours: int = Query(120, ge=6, le=336),
 ):
-    """Return topic-relevant, multi-source related coverage."""
+    """Return topic-relevant multi-source articles and store them in Supabase."""
     try:
         raw = news_service.fetch_related_topic(
             query=q,
@@ -108,8 +112,55 @@ def get_related_articles(
     if exclude_url:
         raw = [a for a in raw if a.get("url") != exclude_url]
 
+    if raw:
+        try:
+            supabase_service.upsert_articles(raw)
+        except Exception:
+            pass
+
     articles = [Article(**a) for a in raw]
     return ArticlesResponse(data=articles, total=len(articles))
+
+
+@router.post("/analyze-url", response_model=Article, status_code=201)
+def analyze_url(
+    url: str = Query(..., description="Public URL of the article to analyze"),
+    category: str = Query("general", description="Category tag to assign"),
+):
+    """
+    Scrape an article by URL, score it with the bias model, store it in
+    Supabase, and return the annotated Article.
+    """
+    try:
+        scraped = scraper_service.scrape_article(url)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Could not scrape URL: {str(e)}")
+
+    text_for_bias = " ".join(
+        filter(None, [scraped.get("title"), scraped.get("summary"), scraped.get("content")])
+    )
+    bias, bias_confidence = bias_service.predict_bias(
+        text=text_for_bias or None,
+        domain=news_service._extract_domain(url),
+    )
+
+    article_data = {
+        **scraped,
+        "category": category,
+        "sentiment": "neutral",
+        "bias": bias,
+        "bias_confidence": bias_confidence,
+        "published_at": None,
+    }
+
+    try:
+        supabase_service.upsert_articles([article_data])
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    return Article(**article_data)
 
 
 @router.get("/{article_id}", response_model=Article)

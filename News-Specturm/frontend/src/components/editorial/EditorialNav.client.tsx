@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../supabasefile";
 
-const CATEGORIES: { label: string; slug: string }[] = [
+const CATEGORIES: { label: string; slug: string; href?: string }[] = [
   { label: "Top Stories", slug: "home" },
   { label: "Politics", slug: "politics" },
   { label: "Technology", slug: "technology" },
   { label: "Business", slug: "business" },
   { label: "Science", slug: "science" },
   { label: "Sports", slug: "sports" },
+  { label: "Analyze URL", slug: "analyze", href: "/analyze" },
 ];
 
 interface Props {
@@ -158,7 +159,7 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
         >
           {CATEGORIES.map((c) => {
             const isActive = activeCategory === c.slug;
-            const href = c.slug === "home" ? "/home" : `/home?category=${c.slug}`;
+            const href = c.href ?? (c.slug === "home" ? "/home" : `/home?category=${c.slug}`);
             return (
               <Link
                 key={c.slug}

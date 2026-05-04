@@ -52,3 +52,19 @@ export async function getRelatedArticles(params: {
   if (!res.ok) throw new Error(`API responded with ${res.status}`);
   return res.json() as Promise<ArticlesResponse>;
 }
+
+export async function analyzeUrl(params: {
+  url: string;
+  category?: string;
+}): Promise<import("./types").Article> {
+  const endpoint = new URL(`${API_URL}/api/articles/analyze-url`);
+  endpoint.searchParams.set("url", params.url);
+  if (params.category) endpoint.searchParams.set("category", params.category);
+
+  const res = await fetch(endpoint.toString(), { method: "POST", cache: "no-store" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? `API responded with ${res.status}`);
+  }
+  return res.json() as Promise<import("./types").Article>;
+}

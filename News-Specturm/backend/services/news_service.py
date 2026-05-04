@@ -1,22 +1,18 @@
 import os
-import json
 import re
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
 
+from services import bias_service
+
 load_dotenv()
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 NEWS_API_BASE = "https://newsapi.org/v2"
-SERPAPI_KEY = os.getenv("SERPAPI_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
-SERPAPI_BASE = "https://serpapi.com/search.json"
-GNEWS_BASE = "https://gnews.io/api/v4/search"
 
 VALID_CATEGORIES = [
     "politics",
@@ -29,18 +25,8 @@ VALID_CATEGORIES = [
     "technology",
 ]
 
-SOURCE_BIAS_PATH = Path(__file__).resolve().parent.parent / "data" / "source_bias.json"
-
-with SOURCE_BIAS_PATH.open("r", encoding="utf-8") as file:
-    _SOURCE_BIAS_DATA = json.load(file)
-
-SOURCE_BIAS_LOOKUP = {
-    domain: value
-    for domain, value in _SOURCE_BIAS_DATA.items()
-    if not domain.startswith("_")
-}
-
-CACHE_TTL_SECONDS = 180
+# External API calls are capped to once every 4 hours per unique request
+CACHE_TTL_SECONDS = 4 * 60 * 60
 _ARTICLE_CACHE: dict[str, tuple[float, list[dict]]] = {}
 
 MAINSTREAM_DOMAINS = {
@@ -91,21 +77,11 @@ def _extract_domain(url: str) -> str:
     return host
 
 
-def _resolve_bias(url: str) -> tuple[str | None, float | None]:
-    domain = _extract_domain(url)
-    if not domain:
-        return None, None
-
-    candidates = [domain]
-    parts = domain.split(".")
-    if len(parts) > 2:
-        candidates.append(".".join(parts[-2:]))
-
-    for candidate in candidates:
-        match = SOURCE_BIAS_LOOKUP.get(candidate)
-        if match:
-            return match.get("bias"), 0.9
-    return None, None
+def _resolve_bias(
+    url: str, text: str | None = None
+) -> tuple[str | None, float | None]:
+    domain = _extract_domain(url) if url else None
+    return bias_service.predict_bias(text=text, domain=domain)
 
 
 def _cache_get(key: str) -> list[dict] | None:
@@ -171,69 +147,8 @@ def _to_iso_datetime(value: str | None) -> str | None:
 
 
 def _search_news(query: str, page_size: int, sort_by: str = "relevancy") -> list[dict]:
-    """Search news with SerpApi/GNews first, then fallback to NewsAPI."""
-    if SERPAPI_KEY:
-        params = {
-            "engine": "google_news",
-            "q": query,
-            "hl": "en",
-            "gl": "us",
-            "num": min(max(page_size, 10), 100),
-            "api_key": SERPAPI_KEY,
-        }
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(SERPAPI_BASE, params=params)
-            response.raise_for_status()
-            data = response.json()
-
-        results = data.get("news_results", [])
-        mapped = []
-        for item in results:
-            mapped.append(
-                {
-                    "title": item.get("title"),
-                    "description": item.get("snippet"),
-                    "content": item.get("snippet"),
-                    "url": item.get("link"),
-                    "urlToImage": item.get("thumbnail"),
-                    "publishedAt": _to_iso_datetime(item.get("date")),
-                    "source": {"name": (item.get("source") or {}).get("name", "Unknown")},
-                }
-            )
-        return mapped
-
-    if GNEWS_API_KEY:
-        params = {
-            "q": query,
-            "lang": "en",
-            "country": "us",
-            "max": min(max(page_size, 10), 100),
-            "apikey": GNEWS_API_KEY,
-        }
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(GNEWS_BASE, params=params)
-            response.raise_for_status()
-            data = response.json()
-
-        results = data.get("articles", [])
-        mapped = []
-        for item in results:
-            mapped.append(
-                {
-                    "title": item.get("title"),
-                    "description": item.get("description"),
-                    "content": item.get("content"),
-                    "url": item.get("url"),
-                    "urlToImage": item.get("image"),
-                    "publishedAt": _to_iso_datetime(item.get("publishedAt")),
-                    "source": {"name": (item.get("source") or {}).get("name", "Unknown")},
-                }
-            )
-        return mapped
-
     if not NEWS_API_KEY:
-        raise RuntimeError("Set SERPAPI_KEY or GNEWS_API_KEY (or NEWS_API_KEY fallback) in .env")
-
+        raise RuntimeError("NEWS_API_KEY is not set in .env")
     params = {
         "apiKey": NEWS_API_KEY,
         "q": query,
@@ -278,7 +193,10 @@ def _parse_article(raw: dict, category: str = "general") -> dict:
 
     source_name = raw.get("source", {}).get("name", "Unknown")
     article_url = raw.get("url")
-    bias, bias_confidence = _resolve_bias(article_url) if article_url else (None, None)
+    text_for_bias = " ".join(
+        filter(None, [raw.get("title"), raw.get("description"), raw.get("content")])
+    )
+    bias, bias_confidence = _resolve_bias(article_url, text=text_for_bias or None)
 
     return {
         "title": raw.get("title") or "Untitled",
@@ -344,8 +262,8 @@ def fetch_top_headlines(
 
 
 def fetch_politics_headlines(page_size: int = 20) -> list[dict]:
-    if not (SERPAPI_KEY or GNEWS_API_KEY or NEWS_API_KEY):
-        raise RuntimeError("Set SERPAPI_KEY or GNEWS_API_KEY (or NEWS_API_KEY fallback) in .env")
+    if not NEWS_API_KEY:
+        raise RuntimeError("NEWS_API_KEY is not set in .env")
 
     cache_key = f"politics:{page_size}"
     cached = _cache_get(cache_key)
@@ -377,8 +295,8 @@ def fetch_everything(
     page_size: int = 20,
     sort_by: str = "publishedAt",
 ) -> list[dict]:
-    if not (SERPAPI_KEY or GNEWS_API_KEY or NEWS_API_KEY):
-        raise RuntimeError("Set SERPAPI_KEY or GNEWS_API_KEY (or NEWS_API_KEY fallback) in .env")
+    if not NEWS_API_KEY:
+        raise RuntimeError("NEWS_API_KEY is not set in .env")
 
     cache_key = f"search:{query}:{language}:{page_size}:{sort_by}"
     cached = _cache_get(cache_key)
@@ -399,8 +317,8 @@ def fetch_related_topic(
     max_age_hours: int = 120,
 ) -> list[dict]:
     """Fetch topic-related coverage with stronger relevance and source diversity."""
-    if not (SERPAPI_KEY or GNEWS_API_KEY or NEWS_API_KEY):
-        raise RuntimeError("Set SERPAPI_KEY or GNEWS_API_KEY (or NEWS_API_KEY fallback) in .env")
+    if not NEWS_API_KEY:
+        raise RuntimeError("NEWS_API_KEY is not set in .env")
 
     normalized_query = query.strip()
     if not normalized_query:
