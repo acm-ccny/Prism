@@ -1,3 +1,4 @@
+import asyncio
 import time
 from urllib.parse import urlparse
 from typing import Optional
@@ -134,3 +135,102 @@ def _parse_html(html: str, url: str) -> dict:
         "url": url,
         "image_url": image_url,
     }
+
+
+# ── Async bulk scraping ──────────────────────────────────────────────
+# Used by news_service when ingesting a NewsAPI batch. httpx-only — Selenium
+# is fine for one-off /analyze-url calls but unusable at 100 URLs/request.
+
+_BULK_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+}
+
+# Per-host concurrency cap. Many news sites rate-limit per-IP; 8 in flight is
+# a safe default that still gives a decent speedup on a 50-100 URL batch.
+_BULK_CONCURRENCY = 8
+_BULK_TIMEOUT = 8.0
+
+
+async def _fetch_one(client: "httpx.AsyncClient", url: str) -> Optional[str]:  # noqa: F821
+    try:
+        resp = await client.get(url, timeout=_BULK_TIMEOUT)
+        resp.raise_for_status()
+        ctype = resp.headers.get("content-type", "")
+        if "html" not in ctype.lower():
+            return None
+        return resp.text
+    except Exception:
+        return None
+
+
+async def scrape_many_async(urls: list[str]) -> dict[str, dict]:
+    """
+    Fetch + parse many article URLs concurrently. Returns a {url: scraped_dict}
+    map. URLs that error out (timeout, blocked, paywalled, non-HTML) are simply
+    omitted — the caller falls back to NewsAPI's snippet for those.
+    """
+    import httpx  # type: ignore
+
+    if not urls:
+        return {}
+
+    # Dedupe while preserving order — a single batch sometimes has the same URL
+    # twice if NewsAPI mirrors it across categories.
+    seen: set[str] = set()
+    unique_urls: list[str] = []
+    for u in urls:
+        if u and u not in seen:
+            seen.add(u)
+            unique_urls.append(u)
+
+    sem = asyncio.Semaphore(_BULK_CONCURRENCY)
+    results: dict[str, dict] = {}
+
+    async with httpx.AsyncClient(
+        timeout=_BULK_TIMEOUT,
+        follow_redirects=True,
+        headers=_BULK_HEADERS,
+        # http2 trims handshake cost on multi-request hosts, but several news
+        # sites mishandle it — leave it off for compatibility.
+    ) as client:
+
+        async def worker(u: str) -> None:
+            async with sem:
+                html = await _fetch_one(client, u)
+            if not html:
+                return
+            try:
+                # _parse_html is CPU-bound (BeautifulSoup) but small per article.
+                # Running it inline keeps the implementation simple; if profiles
+                # show it dominating, push it onto a thread pool.
+                results[u] = _parse_html(html, u)
+            except Exception:
+                pass
+
+        await asyncio.gather(*(worker(u) for u in unique_urls))
+
+    return results
+
+
+def scrape_many(urls: list[str]) -> dict[str, dict]:
+    """
+    Sync wrapper around scrape_many_async. Safe to call from FastAPI's
+    sync endpoints — uses asyncio.run when no loop exists.
+    """
+    if not urls:
+        return {}
+    try:
+        return asyncio.run(scrape_many_async(urls))
+    except RuntimeError:
+        # We're already inside a running loop (rare for sync FastAPI handlers).
+        # Fall back to a fresh loop in this thread.
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(scrape_many_async(urls))
+        finally:
+            loop.close()

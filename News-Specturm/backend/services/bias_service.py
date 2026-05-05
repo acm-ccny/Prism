@@ -5,11 +5,23 @@ from typing import Optional
 MODEL_PATH = Path(__file__).resolve().parent.parent / "data" / "final_bias_model"
 SOURCE_BIAS_PATH = Path(__file__).resolve().parent.parent / "data" / "source_bias.json"
 
-# DistilBERT label order: left=0, center=1, right=2
+# Trained DistilBERT label order: 0=left, 1=center, 2=right.
+# Two label formats are normalized here:
+#   - "LABEL_0/1/2"  → emitted when config.json has no id2label
+#   - "left/center/right" → emitted when id2label IS defined (our case)
+# Keeping both keeps us robust to retrains that drop the label names.
 LABEL_TO_BIAS: dict[str, str] = {
     "LABEL_0": "left",
     "LABEL_1": "center",
     "LABEL_2": "right",
+    "left": "left",
+    "center": "center",
+    "right": "right",
+    # Some retrains use "centre" or capitalized forms — normalize defensively.
+    "centre": "center",
+    "Left": "left",
+    "Center": "center",
+    "Right": "right",
 }
 
 _pipeline = None

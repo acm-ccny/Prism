@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import httpx
 from dotenv import load_dotenv
 
-from services import bias_service
+from services import bias_service, scraper_service
 
 load_dotenv()
 
@@ -180,8 +180,12 @@ def _published_sort_key(article: dict) -> str:
     return article.get("published_at") or ""
 
 
-def _parse_article(raw: dict, category: str = "general") -> dict:
-    """Convert a NewsAPI article into our article schema."""
+def _shape_article(raw: dict, category: str = "general") -> dict:
+    """
+    Convert a NewsAPI article into our row shape, WITHOUT classifying bias.
+    Bias is filled in by `_classify_articles` after the (optional) scrape pass,
+    so the model can read full body text instead of NewsAPI's truncated snippet.
+    """
     published_at = raw.get("publishedAt")
     if published_at:
         try:
@@ -192,25 +196,79 @@ def _parse_article(raw: dict, category: str = "general") -> dict:
             published_at = None
 
     source_name = raw.get("source", {}).get("name", "Unknown")
-    article_url = raw.get("url")
-    text_for_bias = " ".join(
-        filter(None, [raw.get("title"), raw.get("description"), raw.get("content")])
-    )
-    bias, bias_confidence = _resolve_bias(article_url, text=text_for_bias or None)
 
     return {
         "title": raw.get("title") or "Untitled",
         "source": source_name,
         "summary": raw.get("description"),
-        "content": raw.get("content"),
+        "content": raw.get("content"),  # may be replaced by scraped body below
         "url": raw.get("url"),
         "image_url": raw.get("urlToImage"),
         "category": category,
-        "sentiment": "neutral",  # placeholder until the ML model is integrated
-        "bias": bias,
-        "bias_confidence": bias_confidence,
+        "sentiment": "neutral",  # placeholder until the sentiment model is integrated
+        "bias": None,
+        "bias_confidence": None,
         "published_at": published_at,
     }
+
+
+# Articles whose scraped body falls below this length are treated as a failed
+# scrape (paywall stub, "JavaScript required" page, etc.) — we'd rather fall
+# back to NewsAPI's snippet than feed the model a useless 50-char placeholder.
+_MIN_SCRAPED_BODY = 400
+
+
+def _classify_articles(rows: list[dict]) -> list[dict]:
+    """
+    Scrape each article URL concurrently, then run the bias model on the
+    enriched (scraped or fallback) text. Mutates `rows` in place and returns it.
+    """
+    if not rows:
+        return rows
+
+    urls = [r.get("url") for r in rows if r.get("url")]
+    try:
+        scraped_map = scraper_service.scrape_many(urls) if urls else {}
+    except Exception as exc:
+        # A scraper-wide failure (e.g. httpx import error) shouldn't block
+        # ingestion — fall back to NewsAPI snippets for the whole batch.
+        print(f"news_service: bulk scrape failed ({exc}) — using NewsAPI snippets")
+        scraped_map = {}
+
+    for row in rows:
+        url = row.get("url") or ""
+        scraped = scraped_map.get(url)
+        scraped_body = (scraped or {}).get("content") if scraped else None
+
+        if scraped_body and len(scraped_body) >= _MIN_SCRAPED_BODY:
+            # Promote the longer scraped body so the model — and the article
+            # detail view downstream — sees real content, not "[+1234 chars]".
+            row["content"] = scraped_body
+            text_for_bias = " ".join(
+                filter(None, [row.get("title"), row.get("summary"), scraped_body])
+            )
+        else:
+            text_for_bias = " ".join(
+                filter(None, [row.get("title"), row.get("summary"), row.get("content")])
+            )
+
+        bias, conf = _resolve_bias(url, text=text_for_bias or None)
+        row["bias"] = bias
+        row["bias_confidence"] = conf
+
+    return rows
+
+
+def _parse_article(raw: dict, category: str = "general") -> dict:
+    """
+    Backward-compatible single-article entry point. Shapes the row, runs
+    a (single-URL) scrape pass through scrape_many, then classifies. Most
+    callers should batch through _shape_article + _classify_articles instead
+    so scraping happens concurrently across the whole batch.
+    """
+    row = _shape_article(raw, category)
+    _classify_articles([row])
+    return row
 
 
 def fetch_top_headlines(
@@ -254,9 +312,12 @@ def fetch_top_headlines(
         and a.get("title") != "[Removed]"
         and _is_recent_enough(a.get("publishedAt"))
     ]
-    parsed = [_parse_article(a, category) for a in articles]
+    parsed = [_shape_article(a, category) for a in articles]
     parsed.sort(key=lambda a: (_source_priority(a), _published_sort_key(a)), reverse=True)
+    # Trim to the requested size BEFORE scraping so we don't waste outbound
+    # requests on candidates we'll discard.
     parsed = parsed[:page_size]
+    _classify_articles(parsed)
     _cache_set(cache_key, parsed)
     return parsed
 
@@ -282,9 +343,10 @@ def fetch_politics_headlines(page_size: int = 20) -> list[dict]:
         and a.get("title") != "[Removed]"
         and _is_recent_enough(a.get("publishedAt"))
     ]
-    parsed = [_parse_article(a, "politics") for a in articles]
+    parsed = [_shape_article(a, "politics") for a in articles]
     parsed.sort(key=lambda a: (_source_priority(a), _published_sort_key(a)), reverse=True)
     parsed = parsed[:page_size]
+    _classify_articles(parsed)
     _cache_set(cache_key, parsed)
     return parsed
 
@@ -305,7 +367,8 @@ def fetch_everything(
 
     articles = _search_news(query=query, page_size=page_size, sort_by=sort_by)
     articles = [a for a in articles if a.get("url") and a.get("title") != "[Removed]"]
-    parsed = [_parse_article(a, "general") for a in articles]
+    parsed = [_shape_article(a, "general") for a in articles]
+    _classify_articles(parsed)
     _cache_set(cache_key, parsed)
     return parsed
 
@@ -347,7 +410,9 @@ def fetch_related_topic(
         and _is_recent_enough(a.get("publishedAt"), max_age_hours=max_age_hours)
     ]
 
-    parsed = [_parse_article(a, category) for a in raw_articles]
+    # Shape only — scraping is deferred until AFTER selection so we don't
+    # spend outbound requests on articles we're going to drop.
+    parsed = [_shape_article(a, category) for a in raw_articles]
     parsed.sort(key=lambda a: (_source_priority(a), _published_sort_key(a)), reverse=True)
 
     # First pass: maximize unique-source coverage for topic comparison.
@@ -360,8 +425,7 @@ def fetch_related_topic(
         seen_domains.add(domain)
         selected.append(article)
         if len(selected) >= page_size:
-            _cache_set(cache_key, selected)
-            return selected
+            break
 
     # Second pass: fill remaining slots by best-ranked leftovers.
     if len(selected) < page_size:
@@ -373,5 +437,6 @@ def fetch_related_topic(
             if len(selected) >= page_size:
                 break
 
+    _classify_articles(selected)
     _cache_set(cache_key, selected)
     return selected
