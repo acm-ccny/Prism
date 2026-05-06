@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import type { Article } from "../lib/types";
 import { formatRelativeShort } from "../lib/time";
-import BiasSpectrum from "./BiasSpectrum.client";
+import { getSpectrumArticles } from "../lib/api";
+import BiasSpectrum, { type SpectrumArticle } from "./BiasSpectrum.client";
 import SourceMark from "./editorial/SourceMark";
 
 interface Props {
@@ -44,11 +45,50 @@ const formatTime = (iso: string | null): string | null => {
 
 export default function ArticleCanvas({ article, onClose }: Props) {
   const [visible, setVisible] = useState(false);
+  const [spectrumArticles, setSpectrumArticles] = useState<SpectrumArticle[]>([]);
+  const [spectrumLoading, setSpectrumLoading] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSpectrumArticles([]);
+    setSpectrumLoading(true);
+
+    getSpectrumArticles({
+      title: article.title,
+      category: article.category ?? "general",
+      excludeUrl: article.url,
+      pageSize: 18,
+    })
+      .then((data) => {
+        if (cancelled) return;
+        const mapped: SpectrumArticle[] = (data.data ?? [])
+          .filter(
+            (a) => a.bias === "left" || a.bias === "center" || a.bias === "right"
+          )
+          .map((a) => ({
+            title: a.title,
+            source: a.source,
+            url: a.url,
+            bias: a.bias as "left" | "center" | "right",
+            image_url: a.image_url,
+            published_at: a.published_at,
+          }));
+        setSpectrumArticles(mapped);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSpectrumLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [article.url]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -623,7 +663,8 @@ export default function ArticleCanvas({ article, onClose }: Props) {
         {/* ── RIGHT: Spectrum aside ─────────────────────── */}
         <BiasSpectrum
           topic={article.title}
-          articles={[]}
+          articles={spectrumArticles}
+          loading={spectrumLoading}
           selectedBias={article.bias as Bias | null}
           selectedSource={article.source}
         />

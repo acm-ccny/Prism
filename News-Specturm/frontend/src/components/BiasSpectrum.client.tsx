@@ -15,6 +15,7 @@ type Side = "left" | "center" | "right";
 interface Props {
   topic: string | null;
   articles: SpectrumArticle[];
+  loading?: boolean;
   selectedBias: Side | null;
   selectedSource: string;
 }
@@ -163,10 +164,12 @@ function SideSection({
   side,
   items,
   isLast,
+  loading,
 }: {
   side: Side;
   items: SpectrumArticle[];
   isLast: boolean;
+  loading?: boolean;
 }) {
   const colorVar = `var(--ed-bias-${side}-color)`;
   const inkVar = `var(--ed-bias-${side}-ink)`;
@@ -380,7 +383,7 @@ function SideSection({
             letterSpacing: "0.1em",
           }}
         >
-          No coverage yet from this side.
+          {loading ? "Searching coverage…" : "No coverage yet from this side."}
         </p>
       )}
     </div>
@@ -390,6 +393,7 @@ function SideSection({
 export default function BiasSpectrum({
   topic,
   articles,
+  loading,
   selectedBias,
   selectedSource,
 }: Props) {
@@ -469,6 +473,7 @@ export default function BiasSpectrum({
             side={s.key}
             items={byBias[s.key]}
             isLast={i === SIDES.length - 1}
+            loading={loading}
           />
         ))}
       </div>

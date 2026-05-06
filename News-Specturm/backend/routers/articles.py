@@ -165,6 +165,47 @@ def analyze_url(
     return Article(**article_data)
 
 
+@router.get("/spectrum", response_model=ArticlesResponse)
+def get_spectrum_articles(
+    title: str = Query(..., min_length=3, max_length=300),
+    category: str = Query("general"),
+    exclude_url: Optional[str] = Query(None),
+    page_size: int = Query(18, ge=6, le=30),
+):
+    """
+    Extract keywords from the headline via Gemini, build a NewsAPI operator
+    query, fetch related articles, run them through the DistilBERT bias model,
+    and return them partitioned by political leaning.
+    """
+    from services import gemini_service
+
+    query = gemini_service.extract_search_query(title=title)
+
+    try:
+        raw = news_service.fetch_related_topic(
+            query=query,
+            category=category,
+            page_size=page_size,
+            max_age_hours=168,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NewsAPI error: {str(e)}")
+
+    if exclude_url:
+        raw = [a for a in raw if a.get("url") != exclude_url]
+
+    if raw:
+        try:
+            supabase_service.upsert_articles(raw)
+        except Exception:
+            pass
+
+    articles = [Article(**a) for a in raw]
+    return ArticlesResponse(data=articles, total=len(articles))
+
+
 @router.get("/{article_id}", response_model=Article)
 def get_article(article_id: str):
     """Return a single article by its UUID."""

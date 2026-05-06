@@ -56,6 +56,23 @@ export async function getRelatedArticles(params: {
   return res.json() as Promise<ArticlesResponse>;
 }
 
+export async function getSpectrumArticles(params: {
+  title: string;
+  category?: string;
+  excludeUrl?: string;
+  pageSize?: number;
+}): Promise<ArticlesResponse> {
+  const url = new URL(`${API_URL}/api/articles/spectrum`);
+  url.searchParams.set("title", params.title.slice(0, 300));
+  if (params.category) url.searchParams.set("category", params.category);
+  if (params.excludeUrl) url.searchParams.set("exclude_url", params.excludeUrl);
+  if (params.pageSize) url.searchParams.set("page_size", String(params.pageSize));
+
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  if (!res.ok) throw new Error(`API responded with ${res.status}`);
+  return res.json() as Promise<ArticlesResponse>;
+}
+
 export async function analyzeUrl(params: {
   url: string;
   category?: string;

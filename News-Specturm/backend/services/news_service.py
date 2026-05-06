@@ -68,6 +68,10 @@ POLITICS_QUERY = (
     "white house OR government OR policy OR supreme court"
 )
 
+# Comma-separated domain allowlist passed to NewsAPI /everything to keep
+# results scoped to US-based outlets.
+_US_DOMAINS = ",".join(sorted(MAINSTREAM_DOMAINS | INDEPENDENT_POLITICS_DOMAINS))
+
 
 def _extract_domain(url: str) -> str:
     parsed = urlparse(url)
@@ -149,10 +153,12 @@ def _to_iso_datetime(value: str | None) -> str | None:
 def _search_news(query: str, page_size: int, sort_by: str = "relevancy") -> list[dict]:
     if not NEWS_API_KEY:
         raise RuntimeError("NEWS_API_KEY is not set in .env")
+    print(f"[newsapi] query sent: {query}")
     params = {
         "apiKey": NEWS_API_KEY,
         "q": query,
         "language": "en",
+        "domains": _US_DOMAINS,
         "sortBy": sort_by,
         "searchIn": "title,description",
         "pageSize": min(max(page_size, 10), 100),
@@ -379,7 +385,7 @@ def fetch_related_topic(
     page_size: int = 24,
     max_age_hours: int = 120,
 ) -> list[dict]:
-    """Fetch topic-related coverage with stronger relevance and source diversity."""
+    """Fetch articles matching the keyword query, classify bias, and return."""
     if not NEWS_API_KEY:
         raise RuntimeError("NEWS_API_KEY is not set in .env")
 
@@ -387,56 +393,23 @@ def fetch_related_topic(
     if not normalized_query:
         return []
 
-    cache_key = f"related:{normalized_query}:{category}:{page_size}:{max_age_hours}"
+    cache_key = f"related:{normalized_query}:{category}:{page_size}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
-    search_query = normalized_query
-    if category == "politics":
-        search_query = f"({normalized_query}) AND ({POLITICS_QUERY})"
-
     raw_articles = _search_news(
-        query=search_query,
-        page_size=min(max(page_size * 4, 40), 100),
+        query=normalized_query,
+        page_size=page_size,
         sort_by="relevancy",
     )
     raw_articles = [
         a
         for a in raw_articles
-        if a.get("url")
-        and a.get("title")
-        and a.get("title") != "[Removed]"
-        and _is_recent_enough(a.get("publishedAt"), max_age_hours=max_age_hours)
+        if a.get("url") and a.get("title") and a.get("title") != "[Removed]"
     ]
 
-    # Shape only — scraping is deferred until AFTER selection so we don't
-    # spend outbound requests on articles we're going to drop.
-    parsed = [_shape_article(a, category) for a in raw_articles]
-    parsed.sort(key=lambda a: (_source_priority(a), _published_sort_key(a)), reverse=True)
-
-    # First pass: maximize unique-source coverage for topic comparison.
-    selected: list[dict] = []
-    seen_domains: set[str] = set()
-    for article in parsed:
-        domain = _extract_domain(article.get("url") or "")
-        if not domain or domain in seen_domains:
-            continue
-        seen_domains.add(domain)
-        selected.append(article)
-        if len(selected) >= page_size:
-            break
-
-    # Second pass: fill remaining slots by best-ranked leftovers.
-    if len(selected) < page_size:
-        used_urls = {a.get("url") for a in selected}
-        for article in parsed:
-            if article.get("url") in used_urls:
-                continue
-            selected.append(article)
-            if len(selected) >= page_size:
-                break
-
+    selected = [_shape_article(a, category) for a in raw_articles]
     _classify_articles(selected)
     _cache_set(cache_key, selected)
     return selected
