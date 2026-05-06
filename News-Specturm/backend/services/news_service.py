@@ -68,9 +68,12 @@ POLITICS_QUERY = (
     "white house OR government OR policy OR supreme court"
 )
 
-# Comma-separated domain allowlist passed to NewsAPI /everything to keep
-# results scoped to US-based outlets.
-_US_DOMAINS = ",".join(sorted(MAINSTREAM_DOMAINS | INDEPENDENT_POLITICS_DOMAINS))
+# Comma-separated domain allowlist passed to NewsAPI /everything. Sourced
+# from source_bias.json so every left/center/right outlet we know how to tag
+# is in scope — otherwise NewsAPI filters them out before bias classification
+# can run, and the spectrum panel collapses to whichever side our small
+# hardcoded set happened to cover.
+_US_DOMAINS = ",".join(sorted(bias_service._DOMAIN_LOOKUP.keys()))
 
 
 def _extract_domain(url: str) -> str:
