@@ -630,7 +630,7 @@ export default function ArticleCanvas({ article, onClose }: Props) {
                     gap: 10,
                     padding: "13px 18px",
                     background: "var(--ed-h1)",
-                    color: "white",
+                    color: "var(--ed-surface)",
                     borderRadius: 8,
                     textDecoration: "none",
                     fontSize: 13,

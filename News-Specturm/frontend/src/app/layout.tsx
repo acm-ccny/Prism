@@ -26,7 +26,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "News Spectrum",
+  title: "Prism",
   description: "AI-powered bias detection for news articles",
 };
 

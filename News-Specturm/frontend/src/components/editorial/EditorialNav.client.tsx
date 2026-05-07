@@ -108,7 +108,7 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 24,
+          gap: 20,
           padding: "14px 28px",
           maxWidth: 1440,
           margin: "0 auto",
@@ -120,15 +120,15 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 9,
             flexShrink: 0,
             textDecoration: "none",
           }}
         >
           <div
             style={{
-              width: 26,
-              height: 26,
+              width: 22,
+              height: 22,
               borderRadius: 6,
               background:
                 "linear-gradient(135deg, var(--ed-bias-left-color), var(--ed-bias-center-color), var(--ed-bias-right-color))",
@@ -137,8 +137,8 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
           <span
             style={{
               fontSize: 15,
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
               color: "var(--ed-text-accent)",
             }}
           >
@@ -153,7 +153,6 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
             display: "flex",
             gap: 2,
             flex: 1,
-            marginLeft: 8,
             overflowX: "auto",
           }}
         >
@@ -165,20 +164,32 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
                 key={c.slug}
                 href={href}
                 style={{
+                  position: "relative",
                   padding: "7px 12px",
                   fontSize: 13,
-                  fontWeight: isActive ? 600 : 500,
+                  fontWeight: isActive ? 700 : 500,
                   color: isActive ? "var(--ed-text-accent)" : "var(--ed-text-dim)",
                   textDecoration: "none",
-                  borderBottom: isActive
-                    ? "2px solid var(--ed-text-accent)"
-                    : "2px solid transparent",
-                  marginBottom: -1,
                   whiteSpace: "nowrap",
                   transition: "color 0.15s",
                 }}
               >
                 {c.label}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      left: 8,
+                      right: 8,
+                      bottom: 0,
+                      height: 2.5,
+                      borderRadius: 2,
+                      background: "var(--ed-text-accent)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
               </Link>
             );
           })}
@@ -231,21 +242,6 @@ export default function EditorialNav({ activeCategory, initialSearch = "" }: Pro
               color: "var(--ed-text-primary)",
             }}
           />
-          <span
-            style={{
-              fontFamily:
-                "var(--font-plex), 'IBM Plex Mono', ui-monospace, monospace",
-              fontSize: 10,
-              padding: "1px 5px",
-              borderRadius: 3,
-              background: "var(--ed-hairline)",
-              border: "1px solid var(--ed-hairline)",
-              color: "var(--ed-text-muted)",
-              flexShrink: 0,
-            }}
-          >
-            ⌘K
-          </span>
         </div>
 
         {/* Theme toggle */}
